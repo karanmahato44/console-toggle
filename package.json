@@ -1,0 +1,76 @@
+{
+  "name": "console-toggle",
+  "displayName": "Console Toggle",
+  "description": "Quickly comment/uncomment console statements in your JavaScript/TypeScript codebase",
+  "version": "0.0.1",
+  "publisher": "karan",
+  "icon": "assets/icon.avif",
+  "license": "MIT",
+  "homepage": "https://mkaran.com.np/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/karanmahato44/console-toggle.git"
+  },
+  "bugs": {
+    "url": "https://github.com/karanmahato44/console-toggle/issues"
+  },
+  "engines": {
+    "vscode": "^1.106.1"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "console-toggle.toggleConsole",
+        "title": "Quickly comment/uncomment console statements in your JavaScript/TypeScript codebase"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "console-toggle.toggleConsole",
+        "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c",
+        "when": "editorTextFocus && editorLangId =~ /javascript|typescript|vue|svelte/"
+      }
+    ],
+    "configuration": {
+      "title": "Console Toggle",
+      "properties": {
+        "consoleToggle.toggleError": {
+          "type": "boolean",
+          "default": false,
+          "description": "Toggle console.error() statements"
+        },
+        "consoleToggle.toggleWarn": {
+          "type": "boolean",
+          "default": false,
+          "description": "Toggle console.warn() statements"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.106.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.0",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.3"
+  }
+}
