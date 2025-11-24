@@ -3,7 +3,7 @@
   "displayName": "Console Toggle",
   "description": "Quickly comment/uncomment console statements in your JavaScript/TypeScript codebase",
   "version": "0.0.1",
-  "publisher": "karan",
+  "publisher": "mkarancomnp",
   "icon": "assets/icon.avif",
   "license": "MIT",
   "homepage": "https://mkaran.com.np/",
@@ -26,7 +26,7 @@
     "commands": [
       {
         "command": "console-toggle.toggleConsole",
-        "title": "Quickly comment/uncomment console statements in your JavaScript/TypeScript codebase"
+        "title": "Toggle Console Statements"
       }
     ],
     "keybindings": [
