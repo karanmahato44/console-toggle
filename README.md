@@ -16,6 +16,11 @@ Quickly comment/uncomment console statements in your JavaScript/TypeScript codeb
 - **Comment All** - Comment all console statements regardless of current state
 - **Uncomment All** - Remove all comment markers from console statements
 
+### Remove All
+
+- **Remove All from File** - Completely remove all console statements from current file
+- **Remove All from Project** - Recursively remove all console statements from entire project
+
 ## Usage
 
 ### Default keybindings (change to your liking)
@@ -30,6 +35,8 @@ Quickly comment/uncomment console statements in your JavaScript/TypeScript codeb
 - `Console Toggle: Toggle`
 - `Console Toggle: Comment All`
 - `Console Toggle: Uncomment All`
+- `Console Toggle: Remove All from File`
+- `Console Toggle: Remove All from Project`
 
 ### Context Menu
 

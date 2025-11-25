@@ -2,7 +2,7 @@
   "name": "console-toggle",
   "displayName": "Console Toggle",
   "description": "Quickly comment/uncomment console statements in your JavaScript/TypeScript codebase",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "mkarancomnp",
   "icon": "assets/icon.avif",
   "license": "MIT",
@@ -35,6 +35,14 @@
       {
         "command": "console-toggle.uncommentAll",
         "title": "Console Toggle: Uncomment All"
+      },
+      {
+        "command": "console-toggle.removeAll",
+        "title": "Console Toggle: Remove All from File"
+      },
+      {
+        "command": "console-toggle.removeAllProject",
+        "title": "Console Toggle: Remove All from Project"
       }
     ],
     "menus": {

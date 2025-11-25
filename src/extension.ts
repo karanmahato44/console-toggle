@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as vscode from "vscode";
 
 export function activate(context: vscode.ExtensionContext) {
@@ -26,6 +28,37 @@ export function activate(context: vscode.ExtensionContext) {
     if (toggleWarn) methods += "|warn";
 
     return methods;
+  };
+
+  const findMatchingParen = (
+    lines: string[],
+    startLine: number,
+    isCommented: boolean
+  ): { endLine: number; foundComplete: boolean } => {
+    let parenCount = 0;
+    let foundOpen = false;
+    let endLine = startLine;
+    const totalLines = lines.length;
+
+    for (let j = startLine; j < totalLines; j++) {
+      const lineText = isCommented ? lines[j].replace(/^\s*(?:\/\/\s*)+/, "") : lines[j];
+
+      for (let k = 0; k < lineText.length; k++) {
+        const char = lineText[k];
+        if (char === "(") {
+          parenCount++;
+          foundOpen = true;
+        } else if (char === ")") {
+          parenCount--;
+          if (foundOpen && parenCount === 0) {
+            endLine = j;
+            return { endLine, foundComplete: true };
+          }
+        }
+      }
+    }
+
+    return { endLine, foundComplete: false };
   };
 
   const toggleConsoleStatements = (text: string, consoleMethods: string): { newText: string; changed: boolean } => {
@@ -111,38 +144,11 @@ export function activate(context: vscode.ExtensionContext) {
           }
         }
       } else if (lineCommentedRegex.test(original)) {
-        const leading = original.substring(0, original.length - trimmed.length);
-        const start = i;
-        let parenCount = 0;
-        let foundOpen = false;
-        let endLine = i;
+        const { endLine, foundComplete } = findMatchingParen(lines, i, true);
 
-        for (let j = start; j < totalLines; j++) {
-          try {
-            const lineText = lines[j].replace(/^\s*(?:\/\/\s*)+/, "");
-            const len = lineText.length;
-
-            for (let k = 0; k < len; k++) {
-              const char = lineText[k];
-              if (char === "(") {
-                parenCount++;
-                foundOpen = true;
-              } else if (char === ")") {
-                parenCount--;
-                if (foundOpen && parenCount === 0) {
-                  endLine = j;
-                  j = totalLines;
-                  break;
-                }
-              }
-            }
-          } catch (err) {
-            result[j] = lines[j] || "";
-          }
-        }
-
-        if (foundOpen && parenCount === 0) {
-          for (let k = start; k <= endLine; k++) {
+        if (foundComplete) {
+          const leading = original.substring(0, original.length - trimmed.length);
+          for (let k = i; k <= endLine; k++) {
             try {
               const orig = lines[k] || "";
               const leadSpace = orig.substring(0, orig.length - orig.trimStart().length);
@@ -156,37 +162,10 @@ export function activate(context: vscode.ExtensionContext) {
           continue;
         }
       } else if (activeConsoleRegex.test(trimmed)) {
-        const start = i;
-        let parenCount = 0;
-        let foundOpen = false;
-        let endLine = i;
+        const { endLine, foundComplete } = findMatchingParen(lines, i, false);
 
-        for (let j = start; j < totalLines; j++) {
-          try {
-            const lineText = lines[j];
-            const len = lineText.length;
-
-            for (let k = 0; k < len; k++) {
-              const char = lineText[k];
-              if (char === "(") {
-                parenCount++;
-                foundOpen = true;
-              } else if (char === ")") {
-                parenCount--;
-                if (foundOpen && parenCount === 0) {
-                  endLine = j;
-                  j = totalLines;
-                  break;
-                }
-              }
-            }
-          } catch (err) {
-            result[j] = lines[j] || "";
-          }
-        }
-
-        if (foundOpen && parenCount === 0) {
-          for (let k = start; k <= endLine; k++) {
+        if (foundComplete) {
+          for (let k = i; k <= endLine; k++) {
             try {
               const orig = lines[k] || "";
               const leadSpace = orig.substring(0, orig.length - orig.trimStart().length);
@@ -208,6 +187,222 @@ export function activate(context: vscode.ExtensionContext) {
 
     return { newText: result.join("\n"), changed };
   };
+
+  const removeConsoleStatements = (text: string, consoleMethods: string): { newText: string; changed: boolean } => {
+    const lines = text.split("\n");
+    const totalLines = lines.length;
+    if (totalLines === 0) return { newText: text, changed: false };
+
+    const result: string[] = [];
+    let changed = false;
+    let i = 0;
+
+    const lineCommentedRegex = new RegExp(`^\\s*(?:\\/\\/\\s*)+console\\.(${consoleMethods})\\b`);
+    const blockCommentedRegex = new RegExp(`^\\s*\\/\\/*\\s*\\/\\*\\s*console\\.(${consoleMethods})\\b`);
+    const pureBlockCommentedRegex = new RegExp(`^\\s*\\/\\*\\s*console\\.(${consoleMethods})\\b`);
+    const activeConsoleRegex = new RegExp(`\\bconsole\\.(${consoleMethods})\\s*\\(`);
+
+    while (i < totalLines) {
+      const original = lines[i];
+      if (original === undefined) {
+        result.push("");
+        i++;
+        continue;
+      }
+
+      const trimmed = original.trimStart();
+      let removed = false;
+
+      if (blockCommentedRegex.test(original)) {
+        const start = i;
+        let endLine = i;
+
+        for (let j = start + 1; j < totalLines; j++) {
+          if (lines[j].includes("*/")) {
+            endLine = j;
+            break;
+          }
+        }
+
+        i = endLine + 1;
+        removed = true;
+        changed = true;
+      } else if (pureBlockCommentedRegex.test(original)) {
+        if (/\/\*.*\*\//.test(original)) {
+          i++;
+          removed = true;
+          changed = true;
+        } else {
+          const start = i;
+          let endLine = i;
+
+          for (let j = start + 1; j < totalLines; j++) {
+            if (lines[j].includes("*/")) {
+              endLine = j;
+              break;
+            }
+          }
+
+          i = endLine + 1;
+          removed = true;
+          changed = true;
+        }
+      } else if (lineCommentedRegex.test(original)) {
+        const { endLine, foundComplete } = findMatchingParen(lines, i, true);
+
+        if (foundComplete) {
+          i = endLine + 1;
+          removed = true;
+          changed = true;
+        }
+      } else if (activeConsoleRegex.test(trimmed)) {
+        const { endLine, foundComplete } = findMatchingParen(lines, i, false);
+
+        if (foundComplete) {
+          i = endLine + 1;
+          removed = true;
+          changed = true;
+        }
+      }
+
+      if (!removed) {
+        result.push(original);
+        i++;
+      }
+    }
+
+    return { newText: result.join("\n"), changed };
+  };
+
+  const getSupportedFiles = async (dirPath: string): Promise<string[]> => {
+    const supportedExtensions = new Set([".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".astro", ".html"]);
+    const skipDirs = new Set([".git", "node_modules", ".next", "dist", "build", "out"]);
+    const files: string[] = [];
+
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          if (!skipDirs.has(entry.name)) {
+            files.push(...(await getSupportedFiles(fullPath)));
+          }
+        } else if (entry.isFile()) {
+          if (supportedExtensions.has(path.extname(entry.name))) {
+            files.push(fullPath);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Error reading directory ${dirPath}:`, err);
+    }
+
+    return files;
+  };
+
+  const removeAllCommand = vscode.commands.registerCommand("console-toggle.removeAll", () => {
+    try {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !isSupported(editor.document.languageId)) return;
+
+      const consoleMethods = getConsoleMethods();
+      const fullText = editor.document.getText();
+      const { newText, changed } = removeConsoleStatements(fullText, consoleMethods);
+
+      if (changed) {
+        const totalLines = editor.document.lineCount;
+        const lastLine = editor.document.lineAt(totalLines - 1);
+        const range = new vscode.Range(0, 0, lastLine.lineNumber, lastLine.text.length);
+
+        editor.edit((edit) => {
+          edit.replace(range, newText);
+        });
+
+        vscode.window.showInformationMessage("Console Toggle: All console statements removed from file");
+      } else {
+        vscode.window.showInformationMessage("Console Toggle: No console statements found");
+      }
+    } catch (err) {
+      vscode.window.showErrorMessage("Console Toggle: Failed to remove console statements");
+      console.error("Console Toggle Error:", err);
+    }
+  });
+
+  const removeAllProjectCommand = vscode.commands.registerCommand("console-toggle.removeAllProject", async () => {
+    try {
+      if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+        vscode.window.showErrorMessage("Console Toggle: No workspace folder found");
+        return;
+      }
+
+      const workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const consoleMethods = getConsoleMethods();
+      const MAX_CONCURRENT = 4;
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Removing console statements...",
+          cancellable: true,
+        },
+        async (progress, token) => {
+          try {
+            const files = await getSupportedFiles(workspacePath);
+
+            if (files.length === 0) {
+              vscode.window.showInformationMessage("Console Toggle: No supported files found");
+              return;
+            }
+
+            let processedCount = 0;
+            let modifiedCount = 0;
+
+            for (let i = 0; i < files.length; i += MAX_CONCURRENT) {
+              if (token.isCancellationRequested) {
+                break;
+              }
+
+              const batch = files.slice(i, i + MAX_CONCURRENT);
+              const results = await Promise.allSettled(
+                batch.map(async (filePath) => {
+                  try {
+                    const fileContent = fs.readFileSync(filePath, "utf-8");
+                    const { newText, changed } = removeConsoleStatements(fileContent, consoleMethods);
+
+                    if (changed) {
+                      fs.writeFileSync(filePath, newText, "utf-8");
+                      return { modified: true };
+                    }
+                    return { modified: false };
+                  } catch (err) {
+                    console.error(`Error processing file ${filePath}:`, err);
+                    return { modified: false };
+                  }
+                })
+              );
+
+              processedCount += batch.length;
+              modifiedCount += results.filter((r) => r.status === "fulfilled" && r.value.modified).length;
+
+              progress.report({ increment: (batch.length / files.length) * 100 });
+            }
+
+            vscode.window.showInformationMessage(
+              `Console Toggle: Processed ${processedCount} files, ${modifiedCount} modified`
+            );
+          } catch (err) {
+            vscode.window.showErrorMessage("Console Toggle: Failed to process project files");
+            console.error("Console Toggle Error:", err);
+          }
+        }
+      );
+    } catch (err) {
+      vscode.window.showErrorMessage("Console Toggle: Failed to remove console statements from project");
+      console.error("Console Toggle Error:", err);
+    }
+  });
 
   const toggleCommand = vscode.commands.registerCommand("console-toggle.toggleConsole", () => {
     try {
@@ -367,7 +562,13 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  context.subscriptions.push(toggleCommand, commentAllCommand, uncommentAllCommand);
+  context.subscriptions.push(
+    toggleCommand,
+    commentAllCommand,
+    uncommentAllCommand,
+    removeAllCommand,
+    removeAllProjectCommand
+  );
 }
 
 export function deactivate() {}
