@@ -2,7 +2,7 @@
   "name": "console-toggle",
   "displayName": "Console Toggle",
   "description": "Quickly comment/uncomment console statements in your JavaScript/TypeScript codebase",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "mkarancomnp",
   "icon": "assets/icon.avif",
   "license": "MIT",
@@ -26,15 +26,32 @@
     "commands": [
       {
         "command": "console-toggle.toggleConsole",
-        "title": "Toggle Console Statements"
+        "title": "Console Toggle: Toggle"
+      },
+      {
+        "command": "console-toggle.commentAll",
+        "title": "Console Toggle: Comment All"
+      },
+      {
+        "command": "console-toggle.uncommentAll",
+        "title": "Console Toggle: Uncomment All"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "console-toggle.toggleConsole",
+          "when": "editorHasSelection && editorLangId =~ /javascript|typescript|vue|svelte|astro|html/",
+          "group": "1_modification"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "console-toggle.toggleConsole",
         "key": "ctrl+alt+c",
         "mac": "cmd+alt+c",
-        "when": "editorTextFocus && editorLangId =~ /javascript|typescript|vue|svelte/"
+        "when": "editorTextFocus && editorLangId =~ /javascript|typescript|vue|svelte|astro|html/"
       }
     ],
     "configuration": {

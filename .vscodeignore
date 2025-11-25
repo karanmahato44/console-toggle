@@ -9,6 +9,8 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+assets/context.avif
+assets/cmd.avif
 assets/demo.gif
 assets/settings.avif
 out/test/**
